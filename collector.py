@@ -95,18 +95,34 @@ def fetch_league(endpoint: str, queue: str) -> list[dict]:
 
 
 def get_puuid(name: str, tag: str) -> str | None:
-    """Busca o puuid do jogador via account-v1 (roteamento regional)."""
-    url = f"{REGIONAL_BASE}/riot/account/v1/accounts/by-riot-id/{quote(name)}/{quote(tag)}"
+    """
+    Busca o puuid do jogador via summoner-v4 (platform br1).
+    Usa o nome do invocador diretamente — não depende do routing regional.
+    Nota: o endpoint by-name usa o nome sem a tag.
+    """
+    url = f"{PLATFORM_BASE}/lol/summoner/v4/summoners/by-name/{quote(name)}"
     print(f"  [{elapsed()}] GET {url}", flush=True)
     resp = get_with_retry(url)
     if resp.status_code != 200:
         print(
-            f"  [{elapsed()}] Erro ao buscar puuid de {name}#{tag}: "
+            f"  [{elapsed()}] Erro ao buscar summoner de {name}: "
             f"HTTP {resp.status_code} — {resp.text[:200]}",
             flush=True,
         )
         return None
-    return resp.json().get("puuid")
+    data = resp.json()
+    puuid = data.get("puuid")
+    # Já temos o summonerId aqui — salva direto para evitar chamada extra
+    summoner_id = data.get("id")
+    if puuid and summoner_id:
+        save_my_summoner({
+            "player_name":  name,
+            "player_tag":   tag,
+            "puuid":        puuid,
+            "summoner_id":  summoner_id,
+        })
+        print(f"  [{elapsed()}] Summoner encontrado e salvo em cache.", flush=True)
+    return puuid
 
 
 def get_summoner_id(puuid: str) -> str | None:
@@ -153,23 +169,12 @@ def resolve_my_summoner() -> dict:
         return cached
 
     print(f"  [{elapsed()}] Resolvendo summoner: {PLAYER_NAME}#{PLAYER_TAG}...", flush=True)
+    # get_puuid já salva o cache internamente quando bem-sucedido
     puuid = get_puuid(PLAYER_NAME, PLAYER_TAG)
     if not puuid:
         return {}
-
-    summoner_id = get_summoner_id(puuid)
-    if not summoner_id:
-        return {}
-
-    data = {
-        "player_name":  PLAYER_NAME,
-        "player_tag":   PLAYER_TAG,
-        "puuid":        puuid,
-        "summoner_id":  summoner_id,
-    }
-    save_my_summoner(data)
-    print(f"  [{elapsed()}] Summoner resolvido e salvo em cache.", flush=True)
-    return data
+    # Recarrega do cache (foi salvo dentro de get_puuid)
+    return load_my_summoner()
 
 
 # ── Persistência ──────────────────────────────────────────────────────────────
