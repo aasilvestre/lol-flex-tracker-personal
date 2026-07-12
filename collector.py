@@ -97,9 +97,14 @@ def fetch_league(endpoint: str, queue: str) -> list[dict]:
 def get_puuid(name: str, tag: str) -> str | None:
     """Busca o puuid do jogador via account-v1 (roteamento regional)."""
     url = f"{REGIONAL_BASE}/riot/account/v1/accounts/by-riot-id/{quote(name)}/{quote(tag)}"
+    print(f"  [{elapsed()}] GET {url}", flush=True)
     resp = get_with_retry(url)
     if resp.status_code != 200:
-        print(f"  [{elapsed()}] Não foi possível buscar puuid de {name}#{tag}", flush=True)
+        print(
+            f"  [{elapsed()}] Erro ao buscar puuid de {name}#{tag}: "
+            f"HTTP {resp.status_code} — {resp.text[:200]}",
+            flush=True,
+        )
         return None
     return resp.json().get("puuid")
 
