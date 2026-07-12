@@ -24,6 +24,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
+from urllib.parse import quote
 
 # Importa configurações do config.py
 from config import (
@@ -95,7 +96,7 @@ def fetch_league(endpoint: str, queue: str) -> list[dict]:
 
 def get_puuid(name: str, tag: str) -> str | None:
     """Busca o puuid do jogador via account-v1 (roteamento regional)."""
-    url = f"{REGIONAL_BASE}/riot/account/v1/accounts/by-riot-id/{name}/{tag}"
+    url = f"{REGIONAL_BASE}/riot/account/v1/accounts/by-riot-id/{quote(name)}/{quote(tag)}"
     resp = get_with_retry(url)
     if resp.status_code != 200:
         print(f"  [{elapsed()}] Não foi possível buscar puuid de {name}#{tag}", flush=True)
